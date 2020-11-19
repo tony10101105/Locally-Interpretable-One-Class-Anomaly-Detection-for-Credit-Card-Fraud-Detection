@@ -1,0 +1,63 @@
+Kaggle: credit card fraud detection
+
+1. Credit Card Fraud Detection using Deep Learning based on Auto-Encoder and Restricted Boltzmann Machine
+
+2.Analysis of Credit Card Fraud Detection Methods
+
+3.Credit Card Fraud Detection Using AdaBoost and Majority Voting
+
+4.An Efficient Real Time Model For Credit Card Fraud Detection Based On Deep Learning ##citations:0
+
+5.Realtime Fraud Detection in the Banking Sector Using Data Mining Techniques/Algorithm
+
+6.Applying analytics in financial institutions’ fight against fraud##McKinsey Analytics 
+
+7.application of credit card fraud detection: based on bagging ensemble classifier
+
+8.PD-FDS: Purchase Density based Online Credit Card Fraud Detection System##from KDD
+
+9.Improving Detection of Credit Card Fraudulent Transactions using Generative Adversarial Networks##GAN用於數據生成
+
+10.Adversarially Learned One-Class Classifier for Novelty Detection##about one-class algorithm##important
+
+11.Credit Card Fraud Detection Using Autoencoder Model in Unbalanced Datasets##AE用於異常偵測
+
+12.Adversarial Autoencoders##可控的生成模型
+
+13.One-Class Adversarial Nets for Fraud Detection#follows the work of 14
+
+14.Good Semi-supervised Learning That Requires a Bad GAN#train a complementary gan
+
+15.Triple Generative Adversarial Nets#classifier負責分類，discriminator只負責真假（以減輕負擔）
+
+16.Generative Adversarial Nets##GAN原始論文
+
+17.Unsupervised Anomaly Detection with Generative Adversarial Networks to Guide Marker Discovery (anoGAN，用於異常偵測的GAN)
+
+18.EFFICIENT GAN-BASED ANOMALY DETECTION(EGBAD, follow 17.)
+
+19. GANomaly: Semi-Supervised Anomaly Detection via Adversarial Training(follow 18.)
+
+20. Adapting to Concept Drift in Credit Card Transaction Data Streams Using Contextual Bandits and Decision Trees
+
+21.Credit card fraud and detection techniques: a review(about fraud)
+
+22.Learned lessons in credit card fraud detection from a practitioner perspective(about fraud)
+
+23.Data mining for credit card fraud: A comparative study(comparison between DT, SVM, LR)
+
+24.Detecting Credit Card Fraud by Decision Trees and Support Vector Machines(comparison between DT and SVM)
+
+25.Feature engineering strategies for credit card fraud detection
+
+26.A Survey of Credit Card Fraud Detection Techniques: Data and Technique Oriented Perspective
+
+27. APATE: A novel approach for automated credit card transaction fraud detection using network-based extensions
+
+28.A Survey on Concept Drift Adaptation
+
+
+
+
+
+

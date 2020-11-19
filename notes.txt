@@ -1,0 +1,19 @@
+Supervised learning效果比較好，但是比較沒有應用/學術價值。unsupervised learning比較受關注。
+對於二分類的imbalanced data，有harmonized gradient, focal loss等提高小眾類別影響的方法，和data augmentation如SMOTE等over-sampling/under-sampling方法，以及將問題視為one-class classification的方法，如OCSVM, OCNN, OCGP, OCAN（都是unsupervised）等。
+
+本研究使用的方法：
+One-class classification的GAN（如OCAN），並對G, D做特別的約束
+
+Baselines:
+OCSVM, OCNN, OCGP, focal loss, SMOTE, OCAN...
+#需要實作嗎？
+
+Recall代表實際發生詐騙時，有多少案例被成功判定為詐騙，precision代表在被判定為詐騙的案例中，有多少是真的詐騙。recall比precision重要。
+
+F1 score綜合考慮recall跟precision
+
+BN > dropout
+
+Lr = 2e-4然後epoch = 1最好
+
+SmoothL1的Re_loss很低 但MSE效果最好

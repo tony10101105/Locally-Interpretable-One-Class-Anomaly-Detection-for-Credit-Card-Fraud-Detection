@@ -1,16 +1,8 @@
 import os
 import torch
 import torchvision
-import argparse
 import matplotlib.pyplot as plt
 import models
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 16)
-parser.add_argument("--lr", type = float, default = 1e-2)
-args = parser.parse_args()
-
-torch.manual_seed(0)#for reproducibility
 
 def plot_and_save_fig(fpr, tpr, roc_auc):
     plt.figure()
@@ -34,8 +26,8 @@ def load_checkpoint(g_path, d_path):
     g_checkpoint = torch.load(g_path)
     d_checkpoint = torch.load(d_path)
 
-    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-3)
-    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-3)
+    g_optimizer = torch.optim.Adam(generator.parameters(), lr = 0.0002, weight_decay = 1e-3)
+    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = 0.0002, weight_decay = 1e-3)
 
     g_optimizer.load_state_dict(g_checkpoint['optimizer_state_dict'])
     d_optimizer.load_state_dict(d_checkpoint['optimizer_state_dict'])

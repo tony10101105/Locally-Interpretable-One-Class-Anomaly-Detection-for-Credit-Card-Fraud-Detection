@@ -28,7 +28,10 @@ def init_weights(net_layer):
 class FCNN(nn.Module):#discriminator
     def __init__(self):
         super(FCNN, self).__init__()
-        self.layer = nn.Sequential(nn.Linear(30, 10),
+        self.layer = nn.Sequential(nn.Linear(30, 20),
+                                    nn.BatchNorm1d(20),
+                                    nn.ReLU(True),
+                                    nn.Linear(20, 10),
                                     nn.BatchNorm1d(10),
                                     nn.ReLU(True),
                                     nn.Linear(10, 1))

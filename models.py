@@ -28,10 +28,7 @@ def init_weights(net_layer):
 class FCNN(nn.Module):#discriminator
     def __init__(self):
         super(FCNN, self).__init__()
-        self.layer = nn.Sequential(nn.Linear(30, 20),
-                                    nn.BatchNorm1d(20),
-                                    nn.ReLU(True),
-                                    nn.Linear(20, 10),
+        self.layer = nn.Sequential(nn.Linear(30, 10),
                                     nn.BatchNorm1d(10),
                                     nn.ReLU(True),
                                     nn.Linear(10, 1))
@@ -48,12 +45,15 @@ class autoencoder(nn.Module):#generator
     def __init__(self):
         super(autoencoder, self).__init__()
         self.encoder = nn.Sequential(nn.Linear(30, 15),
+                                     #nn.BatchNorm1d(15),
                                      nn.ReLU(True),
                                      nn.Linear(15, 8),
+                                     #nn.BatchNorm1d(8),
                                      nn.ReLU(True))
         init_weights(self.encoder)
         
         self.decoder = nn.Sequential(nn.Linear(8, 15),
+                                     #nn.BatchNorm1d(15),
                                      nn.ReLU(True),
                                      nn.Linear(15, 30))
         init_weights(self.decoder)

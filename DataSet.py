@@ -23,9 +23,9 @@ def mix_max_normalization(x):
     return x
 
 
-class DataSet(Dataset):
+class SplitedDataSet(Dataset):
 
-    def __init__(self, mode = 'non-fraud', normalization_type = 'mix_max'):
+    def __init__(self, mode = "non-fraud"):
 
         CREDIT_CARD_DIRECTORY = './datasets/Kaggle_CCFD/creditcard.csv'
 
@@ -52,16 +52,16 @@ class DataSet(Dataset):
         self.labels = list(map(float, self.labels))
         
         # normalization
-        if normalization_type == 'mix_max':
-            self.features = mix_max_normalization(self.features)
-        elif normalization_type == 'z_score':
-            self.features = z_score_normalization(self.features)
-        else:
-            raise Exception('this type of normalization not implemented yet')
+        # if normalization_type == 'mix_max':
+        #     self.features = mix_max_normalization(self.features)
+        # elif normalization_type == 'z_score':
+        #     self.features = z_score_normalization(self.features)
+        # else:
+        #     raise Exception('this type of normalization not implemented yet')
         
         # conversion to tensor
-        self.features = torch.FloatTensor(self.features)
-        self.labels = torch.FloatTensor(self.labels)
+        # self.features = torch.FloatTensor(self.features)
+        # self.labels = torch.FloatTensor(self.labels)
         
     def __getitem__(self, index):
         return self.features[index], self.labels[index]
@@ -70,3 +70,30 @@ class DataSet(Dataset):
         assert len(self.features) == len(self.labels), print('data length error')
         return len(self.features)
 
+class DataSet(Dataset):
+    def __init__(self, datasets = [], normalization_type = "mix_max"):
+        self.features = []
+        self.labels = []
+
+        for dataset in datasets:
+            self.features += [dataset[i][0] for i in range(len(dataset))]
+            self.labels += [dataset[i][1] for i in range(len(dataset))]
+
+        # normalization
+        if normalization_type == 'mix_max':
+            self.features = mix_max_normalization(self.features)
+        elif normalization_type == 'z_score':
+            self.features = z_score_normalization(self.features)
+        else:
+            raise Exception('this type of normalization not implemented yet')
+
+        # conversion to tensor
+        self.features = torch.FloatTensor(self.features)
+        self.labels = torch.FloatTensor(self.labels)
+
+    def __getitem__(self, index):
+        return self.features[index], self.labels[index]
+
+    def __len__(self):
+        assert len(self.features) == len(self.labels), print('data length error')
+        return len(self.features)

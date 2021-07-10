@@ -23,7 +23,7 @@ def min_max_normalization(x):
     return x
 
 
-class SplitedDataSet(Dataset):
+class DataSet(Dataset):
 
     def __init__(self, mode = 'non-fraud', normalization_type = 'min_max'):
 
@@ -58,11 +58,11 @@ class SplitedDataSet(Dataset):
             self.features = z_score_normalization(self.features)
         else:
             raise Exception('this type of normalization not implemented yet')
-
+        
         # conversion to tensor
         self.features = torch.FloatTensor(self.features)
         self.labels = torch.FloatTensor(self.labels)
-
+        
     def __getitem__(self, index):
         return self.features[index], self.labels[index]
 

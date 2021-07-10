@@ -18,7 +18,7 @@ import lime.lime_tabular
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 64)
+parser.add_argument("--batch_size", type = int, default = 16)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'min_max')
@@ -41,10 +41,6 @@ data_point_num = len(non_fraud_Data)
 test_data_point_num = 490
 train_data_point_num = data_point_num - test_data_point_num
 trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
-#
-trainData, _ = random_split(trainData, [10000, len(trainData) - 10000])
-#
-trainData = DataSet.DataSet([trainData], args.normalization)
 fraud_Data, _ = random_split(fraud_Data, [490, 2])
 testData = ConcatDataset([nonFraudTestData, fraud_Data])#refer to the setting of 13.pdf
 print(len(testData))
@@ -72,8 +68,8 @@ else:
     generator = models.autoencoder()
     discriminator = models.FCNN()
 
-    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-4)
-    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-4)
+    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-3)
+    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-3)
     current_epoch = 0
 
 #some checks

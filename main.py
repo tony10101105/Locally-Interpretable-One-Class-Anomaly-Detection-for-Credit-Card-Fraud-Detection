@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import torch
 import torchvision
 import torch.nn as nn
@@ -10,15 +11,18 @@ import models
 import DataSet
 import utils
 import random
+import lime
+import lime.lime_tabular
+
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 512)
+parser.add_argument("--batch_size", type = int, default = 16)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'min_max')
 parser.add_argument("--reconstructionLoss", type = str, default = 'MSE')
-parser.add_argument("--mode", type = str, default = 'train')
+parser.add_argument("--mode", type = str, default = 'test')
 parser.add_argument("--GPU", type = bool, default = False)
 parser.add_argument("--resume", type = bool, default = False)
 args = parser.parse_args()
@@ -38,6 +42,9 @@ train_data_point_num = data_point_num - test_data_point_num
 trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
 fraud_Data, _ = random_split(fraud_Data, [490, 2])
 testData = ConcatDataset([nonFraudTestData, fraud_Data])#refer to the setting of 13.pdf
+print(len(testData))
+print(len(trainData))
+
 
 trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = True, drop_last=True)
 testDataLoader = DataLoader(dataset = testData, batch_size = args.batch_size, shuffle = True)
@@ -157,8 +164,8 @@ if args.mode == 'train':
                 g_loss_Re = 0
                 g_loss_BCE = 0
                 d_loss_sum = 0
-                #print('real_pred:', real_pred)
-                #print('fake_pred:', fake_pred)
+                print('real_pred:', real_pred)
+                print('fake_pred:', fake_pred)
 
         torch.save({'epoch': epoch+1, 'model_state_dict': generator.state_dict(), 'optimizer_state_dict': g_optimizer.state_dict()}, './checkpoints/g_checkpoint.pth')
         torch.save({'epoch': epoch+1, 'model_state_dict': discriminator.state_dict(), 'optimizer_state_dict': d_optimizer.state_dict()}, './checkpoints/d_checkpoint.pth')
@@ -186,9 +193,13 @@ elif args.mode == 'test':
             ##test Discriminator
             reconstructed_features = generator(features)
             p_fraud = discriminator(reconstructed_features)
-            #print(torch.sum(features - reconstructed_features, 1))
-            #print(labels)
             #p_fraud = 1 - p_fraud
+
+            '''Re_Loss = reconstructionLoss(reconstruction, features)
+            print(features.shape)
+            per_pixel_Re_loss = Re_Loss / features.shape(1)
+            raise Exception('stop')'''
+
             p_fraud = p_fraud.squeeze()
             print(p_fraud)
             print(labels)
@@ -225,10 +236,37 @@ elif args.mode == 'test':
         MCC = utils.get_MCC(TP = float(TP), FP = float(FP), FN = float(FN), TN = float(TN))
         print("accuracy: {}, recall: {}, precision: {}, F1_score: {}, MCC: {}".format(accuracy, recall, precision, F1_score, MCC))
 
-else:
-    raise Exception('mode error')
-    
-        
+elif args.mode == 'explainer':
+    # AE explainer
+    def AE_prediction(features, model=generator):
+        model.eval()
+        features = torch.from_numpy(features).float()
+        '''if useGPU and torch.cuda.is_available():
+            print('using GPU...')
+            model = model.cuda()
+            features = features.cuda()'''
+
+        reconstruction = model(features)
+        Re_loss_pred = (torch.sum(features - reconstruction, 1)**2) / 30
+        return Re_loss_pred.detach().cpu().numpy()
+
+
+    features = np.array([i[0].numpy() for i in testData])
+    labels = np.array([i[1].numpy() for i in testData])
+    f_names = ['Time', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'Amount']
+    targets = ['p_fraud']
+    explainer = lime.lime_tabular.LimeTabularExplainer(features,
+                                                mode='regression',
+                                                feature_names=f_names,
+                                                verbose=True,
+                                                class_names=targets)
+    exp = explainer.explain_instance(features[-1],
+                                    AE_prediction,
+                                    num_features=10)
+    exp.save_to_file('AE_lime.html')
+
+    # D explainer
+    #def D_prediction()
         
 
 

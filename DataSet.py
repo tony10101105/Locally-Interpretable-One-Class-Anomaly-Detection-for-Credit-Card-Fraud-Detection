@@ -58,7 +58,7 @@ class DataSet(Dataset):
             self.features = z_score_normalization(self.features)
         else:
             raise Exception('this type of normalization not implemented yet')
-        
+
         # conversion to tensor
         self.features = torch.FloatTensor(self.features)
         self.labels = torch.FloatTensor(self.labels)

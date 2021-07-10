@@ -76,9 +76,9 @@ class DataSet(Dataset):
         self.labels = []
 
         for dataset in datasets:
-            self.features += [dataset[i][0] for i in range(len(dataset))]
+            self.features += [dataset[i][0][1:-1] for i in range(len(dataset))]
             self.labels += [dataset[i][1] for i in range(len(dataset))]
-
+        '''
         # normalization
         if normalization_type == 'mix_max':
             self.features = mix_max_normalization(self.features)
@@ -86,6 +86,7 @@ class DataSet(Dataset):
             self.features = z_score_normalization(self.features)
         else:
             raise Exception('this type of normalization not implemented yet')
+        '''
 
         # conversion to tensor
         self.features = torch.FloatTensor(self.features)

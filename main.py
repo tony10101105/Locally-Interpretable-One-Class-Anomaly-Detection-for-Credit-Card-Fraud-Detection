@@ -16,10 +16,10 @@ import random
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 16)
+parser.add_argument("--batch_size", type = int, default = 64)
 parser.add_argument("--lr", type = float, default = 2e-4)
-parser.add_argument("--n_epochs", type = int, default = 1)
-parser.add_argument("--normalization", type = str, default = 'mix_max')
+parser.add_argument("--n_epochs", type = int, default = 5)
+parser.add_argument("--normalization", type = str, default = 'z_score')
 parser.add_argument("--reconstructionLoss", type = str, default = 'MSE')
 parser.add_argument("--mode", type = str, default = 'test')
 parser.add_argument("--GPU", type = bool, default = False)
@@ -45,6 +45,9 @@ data_point_num = len(non_fraud_Data)
 test_data_point_num = 490
 train_data_point_num = data_point_num - test_data_point_num
 trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
+#
+trainData, _ = random_split(trainData, [10000, len(trainData) - 10000])
+#
 trainData = DataSet.DataSet([trainData], args.normalization)
 fraud_Data, _ = random_split(fraud_Data, [490, 2])
 testData = DataSet.DataSet([nonFraudTestData, fraud_Data], args.normalization) #following the setting of 13.pdf
@@ -69,8 +72,8 @@ else:
     generator = models.autoencoder()
     discriminator = models.FCNN()
 
-    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-3)
-    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-3)
+    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-4)
+    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-4)
     current_epoch = 0
 
 if args.mode == 'train':
@@ -116,6 +119,13 @@ if args.mode == 'train':
     print('start running on train mode...')
     for epoch in range(current_epoch, args.n_epochs):
         print('epoch:', epoch + 1)
+        '''
+        if epoch + 1 == 4:
+            for param_group in g_optimizer.param_groups:
+                param_group['lr'] = args.lr * 0.1
+            for param_group in d_optimizer.param_groups:
+                param_group['lr'] = args.lr * 0.1
+        '''
         for i, (features, labels) in enumerate(trainDataLoader):
             #noise = torch.randn_like(features)
             #noisy_features = features + noise*0.2
@@ -178,6 +188,8 @@ if args.mode == 'train':
                 g_loss_Re = 0
                 g_loss_BCE = 0
                 d_loss_sum = 0
+                print('real_pred:', real_pred)
+                print('fake_pred:', fake_pred)
 
         torch.save({'epoch': epoch+1, 'model_state_dict': generator.state_dict(), 'optimizer_state_dict': g_optimizer.state_dict()}, './checkpoints/g_checkpoint.pth')
         torch.save({'epoch': epoch+1, 'model_state_dict': discriminator.state_dict(), 'optimizer_state_dict': d_optimizer.state_dict()}, './checkpoints/d_checkpoint.pth')
@@ -206,12 +218,12 @@ elif args.mode == 'test':
             ##test Discriminator
             reconstructed_features = generator(features)
             p_fraud = discriminator(reconstructed_features)
-            #print(torch.sum(features - reconstructed_features, 1))
+            #print('re:', torch.sum(features - reconstructed_features, 1))
             #print(labels)
             p_fraud = p_fraud.squeeze()
             #p_fraud = 1 - p_fraud
-            #print(p_fraud)
-            #print(labels)
+            #print('p_fraud:', p_fraud)
+            #print('labels:', labels)
 
             all_pred.extend(p_fraud.tolist())
             all_labels.extend(labels.tolist())

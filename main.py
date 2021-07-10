@@ -20,13 +20,8 @@ import lime.lime_tabular
 parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", type = int, default = 64)
 parser.add_argument("--lr", type = float, default = 2e-4)
-<<<<<<< HEAD
 parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'min_max')
-=======
-parser.add_argument("--n_epochs", type = int, default = 5)
-parser.add_argument("--normalization", type = str, default = 'z_score')
->>>>>>> 7cd1d8281bc1ff32f96d09130170edfe5553150f
 parser.add_argument("--reconstructionLoss", type = str, default = 'MSE')
 parser.add_argument("--mode", type = str, default = 'test')
 parser.add_argument("--GPU", type = bool, default = False)
@@ -38,16 +33,9 @@ torch.manual_seed(4)#for reproducibility
 random.seed(0)#for reproducibility
 
 #load datasets
-<<<<<<< HEAD
 print('loading the dataset...')
 non_fraud_Data = DataSet.DataSet(mode = 'non-fraud', normalization_type = args.normalization)
 fraud_Data = DataSet.DataSet(mode = 'fraud', normalization_type = args.normalization)
-=======
-print('loading the {} dataset...'.format(args.mode+'ing'))
-
-non_fraud_Data = DataSet.SplitedDataSet(mode = 'non-fraud')
-fraud_Data = DataSet.SplitedDataSet(mode = 'fraud')
->>>>>>> 7cd1d8281bc1ff32f96d09130170edfe5553150f
 
 data_point_num = len(non_fraud_Data)
 test_data_point_num = 490
@@ -58,16 +46,10 @@ trainData, _ = random_split(trainData, [10000, len(trainData) - 10000])
 #
 trainData = DataSet.DataSet([trainData], args.normalization)
 fraud_Data, _ = random_split(fraud_Data, [490, 2])
-<<<<<<< HEAD
 testData = ConcatDataset([nonFraudTestData, fraud_Data])#refer to the setting of 13.pdf
 print(len(testData))
 print(len(trainData))
 
-=======
-testData = DataSet.DataSet([nonFraudTestData, fraud_Data], args.normalization) #following the setting of 13.pdf
-
-# print(testData.features)
->>>>>>> 7cd1d8281bc1ff32f96d09130170edfe5553150f
 
 trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = True, drop_last=True)
 testDataLoader = DataLoader(dataset = testData, batch_size = args.batch_size, shuffle = True)
@@ -126,20 +108,10 @@ if args.mode == 'train':
     print('start running on training mode...')
     for epoch in range(current_epoch, args.n_epochs):
         print('epoch:', epoch + 1)
-<<<<<<< HEAD
         #for recording losses and accuracy/MCC
         g_loss_Re =0
         g_loss_BCE =0
         d_loss_sum = 0
-=======
-        '''
-        if epoch + 1 == 4:
-            for param_group in g_optimizer.param_groups:
-                param_group['lr'] = args.lr * 0.1
-            for param_group in d_optimizer.param_groups:
-                param_group['lr'] = args.lr * 0.1
-        '''
->>>>>>> 7cd1d8281bc1ff32f96d09130170edfe5553150f
         for i, (features, labels) in enumerate(trainDataLoader):
             #noise = torch.randn_like(features)
             #noisy_features = features + noise*0.2
@@ -226,7 +198,6 @@ elif args.mode == 'test':
             ##test Discriminator
             reconstructed_features = generator(features)
             p_fraud = discriminator(reconstructed_features)
-<<<<<<< HEAD
             #p_fraud = 1 - p_fraud
 
             '''Re_Loss = reconstructionLoss(reconstruction, features)
@@ -237,14 +208,6 @@ elif args.mode == 'test':
             p_fraud = p_fraud.squeeze()
             print(p_fraud)
             print(labels)
-=======
-            #print('re:', torch.sum(features - reconstructed_features, 1))
-            #print(labels)
-            p_fraud = p_fraud.squeeze()
-            #p_fraud = 1 - p_fraud
-            #print('p_fraud:', p_fraud)
-            #print('labels:', labels)
->>>>>>> 7cd1d8281bc1ff32f96d09130170edfe5553150f
 
             all_pred.extend(p_fraud.tolist())
             all_labels.extend(labels.tolist())

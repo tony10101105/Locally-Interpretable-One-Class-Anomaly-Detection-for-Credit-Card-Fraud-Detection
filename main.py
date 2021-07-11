@@ -115,7 +115,7 @@ g_loss_Re =0
 g_loss_BCE =0
 d_loss_sum = 0
 TP, FP, FN, TN = 0, 0, 0, 0#4 elements of confusion metrix for calculating MCC
-a = nn.Sigmoid()
+#a = nn.Sigmoid()
 #start training / testing
 if args.mode == 'train':
     print('start running on train mode...')
@@ -131,7 +131,7 @@ if args.mode == 'train':
         for i, (features, labels) in enumerate(trainDataLoader):
             #noise = torch.randn_like(features)
             #noisy_features = features + noise*0.2
-            features = a(features)
+            #features = a(features)
             labels = labels.unsqueeze(1)
             if torch.sum(labels) != 0:
                 raise Exception('stop')
@@ -209,7 +209,7 @@ elif args.mode == 'test':
         args.threshold = i / 20
         print('threshold:', args.threshold)
         for i, (features, labels) in enumerate(testDataLoader):
-            features = a(features)
+            #features = a(features)
             #noise = torch.randn_like(features)
             #noisy_features = features + noise*0.2
 

@@ -9,17 +9,19 @@ torch.manual_seed(0)#for reproducibility
 def z_score_normalization(x):
     x = np.asarray(x, dtype = np.float)
     for i in range(len(x[0])):  
-        mean = np.mean(x[:,i])
-        std = np.std(x[:,i])
-        x[:,i] = (x[:,i] - mean) / std
+        if i == len(x[0]) - 1:
+            mean = np.mean(x[:,i])
+            std = np.std(x[:,i])
+            x[:,i] = (x[:,i] - mean) / std
     return x
 
 def mix_max_normalization(x):
     x = np.asarray(x, dtype = np.float)
     for i in range(len(x[0])):  
-        max = x[:,i].max()
-        min = x[:,i].min()
-        x[:,i] = (x[:,i] - min) / (max - min)
+        if i == len(x[0]) - 1:
+            max = x[:,i].max()
+            min = x[:,i].min()
+            x[:,i] = (x[:,i] - min) / (max - min)
     return x
 
 

@@ -16,9 +16,9 @@ import random
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 64)
+parser.add_argument("--batch_size", type = int, default = 16)
 parser.add_argument("--lr", type = float, default = 2e-4)
-parser.add_argument("--n_epochs", type = int, default = 5)
+parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'z_score')
 parser.add_argument("--reconstructionLoss", type = str, default = 'MSE')
 parser.add_argument("--mode", type = str, default = 'test')
@@ -102,6 +102,8 @@ elif args.reconstructionLoss == 'L1':
     reconstructionLoss = nn.L1Loss()
 elif args.reconstructionLoss == 'SmoothL1':
     reconstructionLoss = nn.SmoothL1Loss()
+elif args.reconstructionLoss == 'BCE':
+    reconstructionLoss = nn.BCEWithLogitsLoss()
 else:
     raise Exception('loss function setting error')
 
@@ -113,7 +115,7 @@ g_loss_Re =0
 g_loss_BCE =0
 d_loss_sum = 0
 TP, FP, FN, TN = 0, 0, 0, 0#4 elements of confusion metrix for calculating MCC
-
+a = nn.Sigmoid()
 #start training / testing
 if args.mode == 'train':
     print('start running on train mode...')
@@ -129,7 +131,7 @@ if args.mode == 'train':
         for i, (features, labels) in enumerate(trainDataLoader):
             #noise = torch.randn_like(features)
             #noisy_features = features + noise*0.2
-
+            features = a(features)
             labels = labels.unsqueeze(1)
             if torch.sum(labels) != 0:
                 raise Exception('stop')
@@ -182,7 +184,7 @@ if args.mode == 'train':
             d_loss_sum += torch.sum(d_loss)
 
 
-            if (i + 1) % 500 == 0:
+            if (i + 1) % 10 == 0:
                 print("iteration: {} / {}, Epoch: {} / {}, g_loss_Re: {:.5f}, g_loss_BCE: {:.4f}, d_loss: {:.4f}".format(
                     str((i+1)*args.batch_size), str(train_data_point_num), epoch+1, args.n_epochs, g_loss_Re.data / (500*args.batch_size), g_loss_BCE.data / (500*args.batch_size), d_loss_sum.data / (500*args.batch_size)))
                 g_loss_Re = 0
@@ -207,6 +209,7 @@ elif args.mode == 'test':
         args.threshold = i / 20
         print('threshold:', args.threshold)
         for i, (features, labels) in enumerate(testDataLoader):
+            features = a(features)
             #noise = torch.randn_like(features)
             #noisy_features = features + noise*0.2
 

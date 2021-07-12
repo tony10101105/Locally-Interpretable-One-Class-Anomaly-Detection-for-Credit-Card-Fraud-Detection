@@ -34,11 +34,11 @@ class FCNN(nn.Module):#discriminator
                                     nn.Linear(10, 1))
         init_weights(self.layer)
         
-        self.sigmoid = nn.Sigmoid()
+        #self.sigmoid = nn.Sigmoid()
         
     def forward(self, x):
         x = self.layer(x)
-        x = self.sigmoid(x)
+        #x = self.sigmoid(x)
         return x
 
 class autoencoder(nn.Module):#generator

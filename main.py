@@ -20,7 +20,7 @@ parser.add_argument("--batch_size", type = int, default = 4096)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'z_score')
-parser.add_argument("--reconstructionLoss", type = str, default = 'L1')
+parser.add_argument("--reconstructionLoss", type = str, default = 'SmoothL1')
 parser.add_argument("--mode", type = str, default = 'test')
 parser.add_argument("--GPU", type = bool, default = False)
 parser.add_argument("--resume", type = bool, default = False)
@@ -108,30 +108,24 @@ else:
     raise Exception('loss function setting error')
 
 #setting adversarial loss
-BCELoss = nn.BCELoss()
-
+#BCELoss = nn.BCELoss()
+BCELoss = nn.BCEWithLogitsLoss()
+MSELoss = nn.MSELoss()
 #variables for recording losses and accuracy/MCC
 g_loss_Re =0
 g_loss_BCE =0
 d_loss_sum = 0
 TP, FP, FN, TN = 0, 0, 0, 0#4 elements of confusion metrix for calculating MCC
-#a = nn.Sigmoid()
+
+sig = nn.Sigmoid()
+
 #start training / testing
 if args.mode == 'train':
     print('start running on train mode...')
     for epoch in range(current_epoch, args.n_epochs):
         print('epoch:', epoch + 1)
-        '''
-        if epoch + 1 == 4:
-            for param_group in g_optimizer.param_groups:
-                param_group['lr'] = args.lr * 0.1
-            for param_group in d_optimizer.param_groups:
-                param_group['lr'] = args.lr * 0.1
-        '''
+        
         for i, (features, labels) in enumerate(trainDataLoader):
-            #noise = torch.randn_like(features)
-            #noisy_features = features + noise*0.2
-            #features = a(features)
             labels = labels.unsqueeze(1)
             if torch.sum(labels) != 0:
                 raise Exception('stop')
@@ -143,7 +137,6 @@ if args.mode == 'train':
                 real_label = real_label.cuda()
                 fake_label = fake_label.cuda()
                 features = features.cuda()
-                #noisy_features = noisy_features.cuda()
                 labels = labels.cuda()
 
             ##train Generator
@@ -153,6 +146,7 @@ if args.mode == 'train':
             
             BCE_Loss = BCELoss(fake_pred, real_label)
             g_loss = Re_Loss + BCE_Loss
+            g_loss = Re_Loss
             
             g_optimizer.zero_grad()
             g_loss.backward()
@@ -162,10 +156,9 @@ if args.mode == 'train':
             g_optimizer.step()
 
             g_loss_Re += torch.sum(Re_Loss)
-            g_loss_BCE += torch.sum(BCE_Loss)
+            g_loss_BCE += torch.sum(Re_Loss)
         
             ##train discriminator
-
             real_pred = discriminator(features)
             real_loss = BCELoss(real_pred, real_label)
 
@@ -173,8 +166,6 @@ if args.mode == 'train':
             fake_loss = BCELoss(fake_pred, fake_label)
 
             d_loss = real_loss + fake_loss
-            #print('real_pred:', real_pred)
-            #print('fake_pred:', fake_pred)
 
             d_optimizer.zero_grad()
             d_loss.backward()
@@ -190,8 +181,8 @@ if args.mode == 'train':
                 g_loss_Re = 0
                 g_loss_BCE = 0
                 d_loss_sum = 0
-                print('real_pred:', real_pred)
-                print('fake_pred:', fake_pred)
+                #print('real_pred:', real_pred)
+                #print('fake_pred:', fake_pred)
 
         torch.save({'epoch': epoch+1, 'model_state_dict': generator.state_dict(), 'optimizer_state_dict': g_optimizer.state_dict()}, './checkpoints/g_checkpoint.pth')
         torch.save({'epoch': epoch+1, 'model_state_dict': discriminator.state_dict(), 'optimizer_state_dict': d_optimizer.state_dict()}, './checkpoints/d_checkpoint.pth')
@@ -209,9 +200,6 @@ elif args.mode == 'test':
         args.threshold = i / 20
         print('threshold:', args.threshold)
         for i, (features, labels) in enumerate(testDataLoader):
-            #features = a(features)
-            #noise = torch.randn_like(features)
-            #noisy_features = features + noise*0.2
 
             if args.GPU == True and torch.cuda.is_available():
                 features = features.cuda()
@@ -221,12 +209,12 @@ elif args.mode == 'test':
             ##test Discriminator
             reconstructed_features = generator(features)
             p_fraud = discriminator(reconstructed_features)
-            #print('re:', torch.sum(features - reconstructed_features, 1))
-            #print(labels)
+            p_fraud = sig(p_fraud)
+            print('re:', torch.sum(features - reconstructed_features, 1))
             p_fraud = p_fraud.squeeze()
             #p_fraud = 1 - p_fraud
-            #print('p_fraud:', p_fraud)
-            #print('labels:', labels)
+            print('p_fraud:', p_fraud)
+            print('labels:', labels)
 
             all_pred.extend(p_fraud.tolist())
             all_labels.extend(labels.tolist())

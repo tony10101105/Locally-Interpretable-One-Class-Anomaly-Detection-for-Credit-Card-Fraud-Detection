@@ -16,11 +16,11 @@ import random
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 16)
+parser.add_argument("--batch_size", type = int, default = 4096)
 parser.add_argument("--lr", type = float, default = 2e-4)
-parser.add_argument("--n_epochs", type = int, default = 1)
+parser.add_argument("--n_epochs", type = int, default = 5)
 parser.add_argument("--normalization", type = str, default = 'z_score')
-parser.add_argument("--reconstructionLoss", type = str, default = 'MSE')
+parser.add_argument("--reconstructionLoss", type = str, default = 'L1')
 parser.add_argument("--mode", type = str, default = 'test')
 parser.add_argument("--GPU", type = bool, default = False)
 parser.add_argument("--resume", type = bool, default = False)
@@ -46,7 +46,7 @@ test_data_point_num = 490
 train_data_point_num = data_point_num - test_data_point_num
 trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
 #
-trainData, _ = random_split(trainData, [10000, len(trainData) - 10000])
+#trainData, _ = random_split(trainData, [100000, len(trainData) - 100000])
 #
 trainData = DataSet.DataSet([trainData], args.normalization)
 fraud_Data, _ = random_split(fraud_Data, [490, 2])

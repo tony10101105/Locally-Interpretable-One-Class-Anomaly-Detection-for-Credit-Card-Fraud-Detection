@@ -18,7 +18,7 @@ import random
 parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", type = int, default = 4096)
 parser.add_argument("--lr", type = float, default = 2e-4)
-parser.add_argument("--n_epochs", type = int, default = 5)
+parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'z_score')
 parser.add_argument("--reconstructionLoss", type = str, default = 'L1')
 parser.add_argument("--mode", type = str, default = 'test')

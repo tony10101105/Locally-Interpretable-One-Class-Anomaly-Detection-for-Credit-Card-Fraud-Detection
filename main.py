@@ -1,10 +1,8 @@
 import os
+import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
-import torchvision
 import torch.nn as nn
-from torchvision import transforms
-from torch.autograd import Variable
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from sklearn import metrics
 import matplotlib.pyplot as plt
@@ -13,6 +11,8 @@ import models
 import DataSet
 import utils
 import random
+import lime
+import lime.lime_tabular
 
 
 parser = argparse.ArgumentParser()
@@ -21,7 +21,7 @@ parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'z_score')
 parser.add_argument("--reconstructionLoss", type = str, default = 'SmoothL1')
-parser.add_argument("--mode", type = str, default = 'test')
+parser.add_argument("--mode", type = str, default = 'explainer')
 parser.add_argument("--GPU", type = bool, default = False)
 parser.add_argument("--resume", type = bool, default = False)
 args = parser.parse_args()
@@ -31,57 +31,43 @@ torch.manual_seed(4)#for reproducibility
 random.seed(0)
 
 #load datasets
-print('loading the {} dataset...'.format(args.mode+'ing'))
+print('loading the dataset...')
 
 non_fraud_Data = DataSet.SplitedDataSet(mode = 'non-fraud')
 fraud_Data = DataSet.SplitedDataSet(mode = 'fraud')
 
-'''data_point_num = len(non_fraud_Data)
-test_data_point_num = int(data_point_num * args.test_ratio)
-train_data_point_num = data_point_num - test_data_point_num
-trainData, testData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
-testData = ConcatDataset([testData, fraud_Data])'''
 data_point_num = len(non_fraud_Data)
 test_data_point_num = 490
 train_data_point_num = data_point_num - test_data_point_num
 trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
-#
 #trainData, _ = random_split(trainData, [100000, len(trainData) - 100000])
-#
 trainData = DataSet.DataSet([trainData], args.normalization)
 fraud_Data, _ = random_split(fraud_Data, [490, 2])
 testData = DataSet.DataSet([nonFraudTestData, fraud_Data], args.normalization) #following the setting of 13.pdf
 
-# print(testData.features)
 
 trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = True, drop_last=True)
 testDataLoader = DataLoader(dataset = testData, batch_size = args.batch_size, shuffle = True)
 print('datasets loading finished!')
 
-
 #load models
-if os.path.exists('./checkpoints/g_checkpoint.pth') and os.path.exists('./checkpoints/d_checkpoint.pth') and (args.resume or args.mode == 'test'):
-    print('loading existing (pretrained) models...')
-    g_path = './checkpoints/g_checkpoint.pth'
-    d_path = './checkpoints/d_checkpoint.pth'
-    
-    generator, discriminator, g_optimizer, d_optimizer, current_epoch = utils.load_checkpoint(g_path, d_path)
-    
+if args.resume or args.mode == 'test' or 'explainer' in args.mode:
+    try:
+        print('loading existing (pretrained) models...')
+        g_path = './checkpoints/g_checkpoint.pth'
+        d_path = './checkpoints/d_checkpoint.pth'
+        generator, discriminator, g_optimizer, d_optimizer, current_epoch = utils.load_checkpoint(g_path, d_path)
+    except:
+        raise Exception('failed to load models. Please check the path')
 else:
     print('building new models...')
     generator = models.autoencoder()
     discriminator = models.FCNN()
 
-    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-4)
-    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-4)
+    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-3)
+    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-3)
     current_epoch = 0
 
-if args.mode == 'train':
-    generator.train()
-    discriminator.train()
-elif args.mode == 'test':
-    generator.eval()
-    discriminator.eval()
 
 if args.GPU == True and torch.cuda.is_available():
     print('using GPU...')
@@ -107,24 +93,21 @@ elif args.reconstructionLoss == 'BCE':
 else:
     raise Exception('loss function setting error')
 
-#setting adversarial loss
-#BCELoss = nn.BCELoss()
+#if we use BCEWithLogitsLoss, sigmoid should be manually applied in testing stage
 BCELoss = nn.BCEWithLogitsLoss()
-MSELoss = nn.MSELoss()
-#variables for recording losses and accuracy/MCC
-g_loss_Re =0
-g_loss_BCE =0
-d_loss_sum = 0
-TP, FP, FN, TN = 0, 0, 0, 0#4 elements of confusion metrix for calculating MCC
-
 sig = nn.Sigmoid()
 
 #start training / testing
 if args.mode == 'train':
+    generator.train()
+    discriminator.train()
     print('start running on train mode...')
     for epoch in range(current_epoch, args.n_epochs):
         print('epoch:', epoch + 1)
-        
+        #for recording losses and accuracy/MCC
+        g_loss_Re =0
+        g_loss_BCE =0
+        d_loss_sum = 0
         for i, (features, labels) in enumerate(trainDataLoader):
             labels = labels.unsqueeze(1)
             if torch.sum(labels) != 0:
@@ -152,7 +135,6 @@ if args.mode == 'train':
             g_loss.backward()
         
             '''nn.utils.clip_grad_norm_(MIX.parameters(), args.clipping_value)'''
-        
             g_optimizer.step()
 
             g_loss_Re += torch.sum(Re_Loss)
@@ -181,20 +163,19 @@ if args.mode == 'train':
                 g_loss_Re = 0
                 g_loss_BCE = 0
                 d_loss_sum = 0
-                #print('real_pred:', real_pred)
-                #print('fake_pred:', fake_pred)
+                print('real_pred:', real_pred)
+                print('fake_pred:', fake_pred)
 
         torch.save({'epoch': epoch+1, 'model_state_dict': generator.state_dict(), 'optimizer_state_dict': g_optimizer.state_dict()}, './checkpoints/g_checkpoint.pth')
         torch.save({'epoch': epoch+1, 'model_state_dict': discriminator.state_dict(), 'optimizer_state_dict': d_optimizer.state_dict()}, './checkpoints/d_checkpoint.pth')
 
 
 elif args.mode == 'test':
+    generator.eval()
+    discriminator.eval()
     print('start running on test mode...')
     for i in range(1, 20):
-        TP = 0
-        FP = 0
-        TN = 0
-        FN = 0
+        TP, FP, TN, FN = 0, 0, 0, 0
         all_pred = []
         all_labels = []
         args.threshold = i / 20
@@ -203,14 +184,13 @@ elif args.mode == 'test':
 
             if args.GPU == True and torch.cuda.is_available():
                 features = features.cuda()
-                #noisy_features = noisy_features.cuda()
                 labels = labels.cuda()
 
             ##test Discriminator
-            reconstructed_features = generator(features)
-            p_fraud = discriminator(reconstructed_features)
+            reconstruction = generator(features)
+            p_fraud = discriminator(reconstruction)
             p_fraud = sig(p_fraud)
-            print('re:', torch.sum(features - reconstructed_features, 1))
+            print('re:', torch.sum(features - reconstruction, 1))
             p_fraud = p_fraud.squeeze()
             #p_fraud = 1 - p_fraud
             print('p_fraud:', p_fraud)
@@ -248,9 +228,75 @@ elif args.mode == 'test':
         MCC = utils.get_MCC(TP = float(TP), FP = float(FP), FN = float(FN), TN = float(TN))
         print("accuracy: {}, recall: {}, precision: {}, F1_score: {}, MCC: {}".format(accuracy, recall, precision, F1_score, MCC))
         
-        #raise Exception('stop')
+elif args.mode == 'explainer':
+    def AE_prediction(features, model=generator):
+        model.eval()
+        features = torch.from_numpy(features).float()
+        reconstruction = model(features)
+        Re_loss_pred = (torch.sum(features - reconstruction, 1)**2) / 30
+        return Re_loss_pred.detach().cpu().numpy()
 
+    def D_prediction(features, model=discriminator):
+        #features is already the output of AE, namely the reconstruction
+        model.eval()
+        reconstruction = torch.from_numpy(features).float()
+        p_fraud = model(reconstruction)
+        p_fraud = sig(p_fraud)
+        return p_fraud.detach().cpu().numpy()
     
+    def AED_prediction(features, model=[generator, discriminator]):
+        AE, discriminator = model[0], model[1]
+        AE.eval()
+        discriminator.eval()
+        features = torch.from_numpy(features).float()
+        reconstruction = AE(features)
+        p_fraud = discriminator(reconstruction)
+        p_fraud = sig(p_fraud)
+        ｐrint('p_fraud:', p_fraud)
+        return p_fraud.detach().cpu().numpy()
+
+    features = np.array([i[0].numpy() for i in testData])
+    reconstructed_features = generator(torch.from_numpy(features).float()).detach().numpy()
+    print('aaa:', features.shape)
+    print('bbb:', reconstructed_features.shape)
+    labels = np.array([i[1].numpy() for i in testData])
+    f_names = ['Time', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'Amount']
+
+    #explain Generator(AutoEncoder)
+    AE_explainer = lime.lime_tabular.LimeTabularExplainer(features,
+                                                mode='regression',
+                                                feature_names=f_names,
+                                                verbose=True,
+                                                class_names=['reconstruction error'])
+    AE_exp = AE_explainer.explain_instance(features[-1],
+                                    AE_prediction,
+                                    num_features=10)
+    AE_exp.save_to_file('AE_lime.html')
+    print('AE explaination done')
+
+    #explain Discriminator
+    D_explainer = lime.lime_tabular.LimeTabularExplainer(reconstructed_features,
+                                                mode='classification',
+                                                feature_names=f_names,
+                                                verbose=True,
+                                                class_names=['p_fraud'])
+    D_exp = D_explainer.explain_instance(features[-1],
+                                    D_prediction,
+                                    num_features=10)
+    D_exp.save_to_file('D_lime.html')
+    print('Discriminator explaination done')
+
+    #explain whole network
+    AED_explainer = lime.lime_tabular.LimeTabularExplainer(features,
+                                                mode='classification',
+                                                feature_names=f_names,
+                                                verbose=True,
+                                                class_names=['p_fraud'])
+    AED_exp = AED_explainer.explain_instance(features[-1],
+                                    AED_prediction,
+                                    num_features=10)
+    AED_exp.save_to_file('AED_lime.html')
+    print('whole network explaination done')
         
     
         

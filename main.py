@@ -1,28 +1,27 @@
 import os
-import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
 import torchvision
 import torch.nn as nn
 from torchvision import transforms
+from torch.autograd import Variable
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from sklearn import metrics
+import matplotlib.pyplot as plt
 import argparse
 import models
 import DataSet
 import utils
 import random
-import lime
-import lime.lime_tabular
-
+import csv
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 16)
+parser.add_argument("--batch_size", type = int, default = 4096)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--n_epochs", type = int, default = 1)
-parser.add_argument("--normalization", type = str, default = 'min_max')
-parser.add_argument("--reconstructionLoss", type = str, default = 'MSE')
+parser.add_argument("--normalization", type = str, default = 'z_score')
+parser.add_argument("--reconstructionLoss", type = str, default = 'SmoothL1')
 parser.add_argument("--mode", type = str, default = 'test')
 parser.add_argument("--GPU", type = bool, default = False)
 parser.add_argument("--resume", type = bool, default = False)
@@ -30,22 +29,38 @@ args = parser.parse_args()
 print(args)
 
 torch.manual_seed(4)#for reproducibility
-random.seed(0)#for reproducibility
+random.seed(0)
 
 #load datasets
-print('loading the dataset...')
-non_fraud_Data = DataSet.DataSet(mode = 'non-fraud', normalization_type = args.normalization)
-fraud_Data = DataSet.DataSet(mode = 'fraud', normalization_type = args.normalization)
+print('loading the {} dataset...'.format(args.mode+'ing'))
+
+non_fraud_Data = DataSet.SplitedDataSet(mode = 'non-fraud')
+fraud_Data = DataSet.SplitedDataSet(mode = 'fraud')
 
 data_point_num = len(non_fraud_Data)
 test_data_point_num = 490
 train_data_point_num = data_point_num - test_data_point_num
 trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
-fraud_Data, _ = random_split(fraud_Data, [490, 2])
-testData = ConcatDataset([nonFraudTestData, fraud_Data])#refer to the setting of 13.pdf
-print(len(testData))
-print(len(trainData))
 
+trainData = DataSet.DataSet([trainData], args.normalization)
+fraud_Data, _ = random_split(fraud_Data, [490, 2])
+testData = DataSet.DataSet([nonFraudTestData, fraud_Data], args.normalization) #following the setting of 13.pdf
+
+""" 
+with open("./datasets/trainData.csv", "w") as f:
+    writer = csv.writer(f)
+
+    for i in range(len(trainData)):
+        writer.writerow(trainData[i][0]+[trainData[i][1]])
+
+with open("./datasets/testData.csv", "w") as f:
+    writer = csv.writer(f)
+
+    for i in range(len(testData)):
+        writer.writerow(testData[i][0]+[testData[i][1]])
+
+raise Exception 
+"""
 
 trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = True, drop_last=True)
 testDataLoader = DataLoader(dataset = testData, batch_size = args.batch_size, shuffle = True)
@@ -53,65 +68,72 @@ print('datasets loading finished!')
 
 
 #load models
-if args.resume or args.mode == 'test':
-    try:
-        print('loading existing (pretrained) models...')
-        g_path = './checkpoints/g_checkpoint.pth'
-        d_path = './checkpoints/d_checkpoint.pth'
+if os.path.exists('./checkpoints/g_checkpoint.pth') and os.path.exists('./checkpoints/d_checkpoint.pth') and (args.resume or args.mode == 'test'):
+    print('loading existing (pretrained) models...')
+    g_path = './checkpoints/g_checkpoint.pth'
+    d_path = './checkpoints/d_checkpoint.pth'
     
-        generator, discriminator, g_optimizer, d_optimizer, current_epoch = utils.load_checkpoint(g_path, d_path)
-    except:
-        raise Exception('failed to load models!')
+    generator, discriminator, g_optimizer, d_optimizer, current_epoch = utils.load_checkpoint(g_path, d_path)
     
 else:
     print('building new models...')
     generator = models.autoencoder()
     discriminator = models.FCNN()
 
-    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-3)
-    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-3)
+    g_optimizer = torch.optim.Adam(generator.parameters(), lr = args.lr, weight_decay = 1e-4)
+    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr = args.lr, weight_decay = 1e-4)
     current_epoch = 0
 
-#some checks
+if args.mode == 'train':
+    generator.train()
+    discriminator.train()
+elif args.mode == 'test':
+    generator.eval()
+    discriminator.eval()
+
 if args.GPU == True and torch.cuda.is_available():
     print('using GPU...')
     generator = generator.cuda()
     discriminator = discriminator.cuda()
 
-#come checks
+#some checks
 if current_epoch >= args.n_epochs and args.mode == 'train':
     raise Exception('epoch number error!')
 if args.mode == 'test' and (os.path.exists('./checkpoints/g_checkpoint.pth') and os.path.exists('./checkpoints/d_checkpoint.pth')) == False:
     raise Exception('no pretrained models for testing stage')
 
-#set the loss function
+#setting the loss function
+#setting re-construction loss
 if args.reconstructionLoss == 'MSE':
     reconstructionLoss = nn.MSELoss()
 elif args.reconstructionLoss == 'L1':
     reconstructionLoss = nn.L1Loss()
 elif args.reconstructionLoss == 'SmoothL1':
     reconstructionLoss = nn.SmoothL1Loss()
+elif args.reconstructionLoss == 'BCE':
+    reconstructionLoss = nn.BCEWithLogitsLoss()
 else:
     raise Exception('loss function setting error')
 
-#set adversarial loss
-BCELoss = nn.BCELoss()
+#setting adversarial loss
+#BCELoss = nn.BCELoss()
+BCELoss = nn.BCEWithLogitsLoss()
+MSELoss = nn.MSELoss()
+#variables for recording losses and accuracy/MCC
+g_loss_Re =0
+g_loss_BCE =0
+d_loss_sum = 0
+TP, FP, FN, TN = 0, 0, 0, 0#4 elements of confusion metrix for calculating MCC
+
+sig = nn.Sigmoid()
 
 #start training / testing
 if args.mode == 'train':
-    generator.train()
-    discriminator.train()
-    print('start running on training mode...')
+    print('start running on train mode...')
     for epoch in range(current_epoch, args.n_epochs):
         print('epoch:', epoch + 1)
-        #for recording losses and accuracy/MCC
-        g_loss_Re =0
-        g_loss_BCE =0
-        d_loss_sum = 0
+        
         for i, (features, labels) in enumerate(trainDataLoader):
-            #noise = torch.randn_like(features)
-            #noisy_features = features + noise*0.2
-
             labels = labels.unsqueeze(1)
             if torch.sum(labels) != 0:
                 raise Exception('stop')
@@ -123,7 +145,6 @@ if args.mode == 'train':
                 real_label = real_label.cuda()
                 fake_label = fake_label.cuda()
                 features = features.cuda()
-                #noisy_features = noisy_features.cuda()
                 labels = labels.cuda()
 
             ##train Generator
@@ -133,17 +154,19 @@ if args.mode == 'train':
             
             BCE_Loss = BCELoss(fake_pred, real_label)
             g_loss = Re_Loss + BCE_Loss
+            g_loss = Re_Loss
             
             g_optimizer.zero_grad()
             g_loss.backward()
         
+            '''nn.utils.clip_grad_norm_(MIX.parameters(), args.clipping_value)'''
+        
             g_optimizer.step()
 
             g_loss_Re += torch.sum(Re_Loss)
-            g_loss_BCE += torch.sum(BCE_Loss)
+            g_loss_BCE += torch.sum(Re_Loss)
         
             ##train discriminator
-
             real_pred = discriminator(features)
             real_loss = BCELoss(real_pred, real_label)
 
@@ -154,37 +177,37 @@ if args.mode == 'train':
 
             d_optimizer.zero_grad()
             d_loss.backward()
+            '''nn.utils.clip_grad_norm_(GRU.parameters(), args.clipping_value)'''
             d_optimizer.step()
 
             d_loss_sum += torch.sum(d_loss)
 
 
-            if (i + 1) % 500 == 0:
+            if (i + 1) % 10 == 0:
                 print("iteration: {} / {}, Epoch: {} / {}, g_loss_Re: {:.5f}, g_loss_BCE: {:.4f}, d_loss: {:.4f}".format(
                     str((i+1)*args.batch_size), str(train_data_point_num), epoch+1, args.n_epochs, g_loss_Re.data / (500*args.batch_size), g_loss_BCE.data / (500*args.batch_size), d_loss_sum.data / (500*args.batch_size)))
                 g_loss_Re = 0
                 g_loss_BCE = 0
                 d_loss_sum = 0
-                print('real_pred:', real_pred)
-                print('fake_pred:', fake_pred)
+                #print('real_pred:', real_pred)
+                #print('fake_pred:', fake_pred)
 
         torch.save({'epoch': epoch+1, 'model_state_dict': generator.state_dict(), 'optimizer_state_dict': g_optimizer.state_dict()}, './checkpoints/g_checkpoint.pth')
         torch.save({'epoch': epoch+1, 'model_state_dict': discriminator.state_dict(), 'optimizer_state_dict': d_optimizer.state_dict()}, './checkpoints/d_checkpoint.pth')
 
 
 elif args.mode == 'test':
-    generator.eval()
-    discriminator.eval()
     print('start running on test mode...')
     for i in range(1, 20):
-        TP, FP, TN, FN = 0, 0, 0, 0
+        TP = 0
+        FP = 0
+        TN = 0
+        FN = 0
         all_pred = []
         all_labels = []
-        threshold = i / 20
-        print('threshold:', threshold)
+        args.threshold = i / 20
+        print('threshold:', args.threshold)
         for i, (features, labels) in enumerate(testDataLoader):
-            #noise = torch.randn_like(features)
-            #noisy_features = features + noise*0.2
 
             if args.GPU == True and torch.cuda.is_available():
                 features = features.cuda()
@@ -194,22 +217,18 @@ elif args.mode == 'test':
             ##test Discriminator
             reconstructed_features = generator(features)
             p_fraud = discriminator(reconstructed_features)
-            #p_fraud = 1 - p_fraud
-
-            '''Re_Loss = reconstructionLoss(reconstruction, features)
-            print(features.shape)
-            per_pixel_Re_loss = Re_Loss / features.shape(1)
-            raise Exception('stop')'''
-
+            p_fraud = sig(p_fraud)
+            print('re:', torch.sum(features - reconstructed_features, 1))
             p_fraud = p_fraud.squeeze()
-            print(p_fraud)
-            print(labels)
+            #p_fraud = 1 - p_fraud
+            print('p_fraud:', p_fraud)
+            print('labels:', labels)
 
             all_pred.extend(p_fraud.tolist())
             all_labels.extend(labels.tolist())
             
             final_pred = torch.zeros(p_fraud.size())
-            final_pred[p_fraud >= threshold] = 1
+            final_pred[p_fraud >= args.threshold] = 1
         
             TP += torch.sum((final_pred == 1) & (labels == 1))
             FP += torch.sum((final_pred == 1) & (labels == 0))
@@ -236,38 +255,13 @@ elif args.mode == 'test':
         F1_score = utils.get_F1_score(TP = float(TP), FP = float(FP), FN = float(FN), TN = float(TN))
         MCC = utils.get_MCC(TP = float(TP), FP = float(FP), FN = float(FN), TN = float(TN))
         print("accuracy: {}, recall: {}, precision: {}, F1_score: {}, MCC: {}".format(accuracy, recall, precision, F1_score, MCC))
+        
+        #raise Exception('stop')
 
-elif args.mode == 'explainer':
-    # AE explainer
-    def AE_prediction(features, model=generator):
-        model.eval()
-        features = torch.from_numpy(features).float()
-        '''if useGPU and torch.cuda.is_available():
-            print('using GPU...')
-            model = model.cuda()
-            features = features.cuda()'''
-
-        reconstruction = model(features)
-        Re_loss_pred = (torch.sum(features - reconstruction, 1)**2) / 30
-        return Re_loss_pred.detach().cpu().numpy()
-
-
-    features = np.array([i[0].numpy() for i in testData])
-    labels = np.array([i[1].numpy() for i in testData])
-    f_names = ['Time', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'Amount']
-    targets = ['p_fraud']
-    explainer = lime.lime_tabular.LimeTabularExplainer(features,
-                                                mode='regression',
-                                                feature_names=f_names,
-                                                verbose=True,
-                                                class_names=targets)
-    exp = explainer.explain_instance(features[-1],
-                                    AE_prediction,
-                                    num_features=10)
-    exp.save_to_file('AE_lime.html')
-
-    # D explainer
-    #def D_prediction()
+    
+        
+    
+        
         
 
 

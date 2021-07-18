@@ -3,20 +3,6 @@ import torch
 import torchvision
 import matplotlib.pyplot as plt
 import models
-    
-
-def predict(features, model):
-    model.eval()
-    features = torch.from_numpy(features).float()
-    '''if useGPU and torch.cuda.is_available():
-        print('using GPU...')
-        model = model.cuda()
-        features = features.cuda()'''
-
-    reconstruction = model(features)
-    Re_loss_pred = (torch.sum(features - reconstruction, 1)**2) / 30
-    return Re_loss_pred.detach().cpu().numpy()
-
 
 def plot_and_save_fig(fpr, tpr, roc_auc):
     plt.figure()

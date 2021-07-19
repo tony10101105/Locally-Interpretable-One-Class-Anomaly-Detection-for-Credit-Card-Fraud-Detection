@@ -53,17 +53,6 @@ class SplitedDataSet(Dataset):
             self.features[i] = list(map(float, self.features[i]))
         self.labels = list(map(float, self.labels))
         
-        # normalization
-        # if normalization_type == 'mix_max':
-        #     self.features = mix_max_normalization(self.features)
-        # elif normalization_type == 'z_score':
-        #     self.features = z_score_normalization(self.features)
-        # else:
-        #     raise Exception('this type of normalization not implemented yet')
-        
-        # conversion to tensor
-        self.features = torch.FloatTensor(self.features)
-        self.labels = torch.FloatTensor(self.labels)
         
     def __getitem__(self, index):
         return self.features[index], self.labels[index]

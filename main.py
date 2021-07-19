@@ -59,7 +59,7 @@ with open("./datasets/testData.csv", "w") as f:
     for i in range(len(testData)):
         writer.writerow(testData[i][0]+[testData[i][1]])
 
-raise Exception 
+raise Exception  
 """
 
 trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = True, drop_last=True)

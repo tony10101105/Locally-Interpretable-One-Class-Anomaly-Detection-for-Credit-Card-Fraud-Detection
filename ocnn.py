@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from sklearn.neighbors import NearestNeighbors
 import utils
 
+random.seed(0)
+
 train_data = pd.read_csv("./datasets/trainData.csv", header = None).values
 test_data = pd.read_csv("./datasets/testData.csv", header = None).values
 

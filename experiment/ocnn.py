@@ -7,8 +7,8 @@ import utils
 
 random.seed(0)
 
-train_data = pd.read_csv("./datasets/trainData.csv", header = None).values
-test_data = pd.read_csv("./datasets/testData.csv", header = None).values
+train_data = pd.read_csv("../datasets/trainData.csv", header = None).values
+test_data = pd.read_csv("../datasets/testData.csv", header = None).values
 
 train_sample_num = 700
 train_data = train_data[random.sample(range(len(train_data)), train_sample_num)]
@@ -25,7 +25,7 @@ distances, indexes = nbrs.kneighbors(test_data[:,:-1])
 
 plt.figure()
 plt.scatter( range(len(distances)), distances.mean(axis =1), s=9)
-plt.savefig('./fig/mean')
+plt.savefig('../fig/mean')
 
 TP = 0
 TN = 0

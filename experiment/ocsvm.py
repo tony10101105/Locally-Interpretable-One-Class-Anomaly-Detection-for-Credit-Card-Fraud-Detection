@@ -11,14 +11,11 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from sklearn import metrics
 import matplotlib.pyplot as plt
-import argparse
-import models
-import DataSet
 import utils
 import random
 
 
-with open("./datasets/trainData.csv", "r") as train_file:
+with open("../datasets/trainData.csv", "r") as train_file:
     train_data = csv.reader(train_file)
     train_features = []
     train_labels = []
@@ -26,7 +23,7 @@ with open("./datasets/trainData.csv", "r") as train_file:
         train_features.append(list(map(float,row[:-1])))
         train_labels.append(float(row[-1]))
 
-with open("./datasets/testData.csv", "r") as test_file:
+with open("../datasets/testData.csv", "r") as test_file:
     test_data = csv.reader(test_file)
     test_features = []
     test_labels = []

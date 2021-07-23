@@ -1,28 +1,24 @@
-from pyod.models.so_gaal import SO_GAAL  
+from pyod.models.copod import COPOD
 import random
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import  utils
-import tensorflow as tf
 
-tf.random.set_seed(4)
 random.seed(0)
 
 train_data = pd.read_csv("../datasets/trainData.csv", header = None).values
 test_data = pd.read_csv("../datasets/testData.csv", header = None).values
 
-train_sample_num = 20000
+train_sample_num = 700
 train_data = train_data[random.sample(range(len(train_data)), train_sample_num)]
 
-clf = SO_GAAL(stop_epochs=1,contamination=(len(test_data)/2)/(len(test_data)+train_sample_num))
+clf = COPOD(contamination=(len(test_data)/2)/(len(test_data)+train_sample_num))
 clf.fit(train_data[:,:-1])
 
 # get the prediction on the test data
 y_test_pred = clf.predict(test_data[:,:-1])  # outlier labels (0 or 1)
 y_test_label = test_data[:,-1].astype(int).tolist()
-
-print(y_test_pred)
 
 TP = 0
 TN = 0

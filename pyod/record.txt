@@ -1,0 +1,6 @@
+OCNN: accuracy: 0.9031, recall: 0.8974, precision: 0.9102, F1_score: 0.9038, MCC: 0.8062
+OCSVM: accuracy: 0.8898, recall: 0.8673, precision: 0.9204, F1_score: 0.8931, MCC: 0.7811
+AE: accuracy: 0.8, recall: 0.7402, precision: 0.9245, F1_score: 0.8221, MCC: 0.6195
+COPOD: accuracy: 0.8388, recall: 0.9415, precision: 0.7224, F1_score: 0.8175, MCC: 0.6967
+SO_GAAL: accuracy: 0.9092, recall: 0.9785, precision: 0.8367, F1_score: 0.9021, MCC: 0.8271
+OCAN: accuracy: 0.8806, recall: 0.9472, precision: 0.8061, F1_score: 0.871, MCC: 0.7698

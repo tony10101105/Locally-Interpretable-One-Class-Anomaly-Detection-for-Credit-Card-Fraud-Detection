@@ -21,7 +21,7 @@ parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'z_score')
 parser.add_argument("--reconstructionLoss", type = str, default = 'SmoothL1')
-parser.add_argument("--mode", type = str, default = 'explainer')
+parser.add_argument("--mode", type = str, default = 'test')
 parser.add_argument("--GPU", type = bool, default = False)
 parser.add_argument("--resume", type = bool, default = False)
 args = parser.parse_args()
@@ -159,7 +159,7 @@ if args.mode == 'train':
 
             if (i + 1) % 10 == 0:
                 print("iteration: {} / {}, Epoch: {} / {}, g_loss_Re: {:.5f}, g_loss_BCE: {:.4f}, d_loss: {:.4f}".format(
-                    str((i+1)*args.batch_size), str(train_data_point_num), epoch+1, args.n_epochs, g_loss_Re.data / (500*args.batch_size), g_loss_BCE.data / (500*args.batch_size), d_loss_sum.data / (500*args.batch_size)))
+                    str((i+1)*args.batch_size), str(train_data_point_num), epoch+1, args.n_epochs, g_loss_Re.data / (10*args.batch_size), g_loss_BCE.data / (10*args.batch_size), d_loss_sum.data / (10*args.batch_size)))
                 g_loss_Re = 0
                 g_loss_BCE = 0
                 d_loss_sum = 0
@@ -242,7 +242,8 @@ elif args.mode == 'explainer':
         reconstruction = torch.from_numpy(features).float()
         p_fraud = model(reconstruction)
         p_fraud = sig(p_fraud)
-        return p_fraud.detach().cpu().numpy()
+        p_genuine = 1 - p_fraud
+        return torch.cat([p_fraud, p_genuine], 1).detach().cpu().numpy()
     
     def AED_prediction(features, model=[generator, discriminator]):
         AE, discriminator = model[0], model[1]
@@ -252,15 +253,13 @@ elif args.mode == 'explainer':
         reconstruction = AE(features)
         p_fraud = discriminator(reconstruction)
         p_fraud = sig(p_fraud)
-        ｐrint('p_fraud:', p_fraud)
-        return p_fraud.detach().cpu().numpy()
+        p_genuine = 1 - p_fraud
+        return torch.cat([p_fraud, p_genuine], 1).detach().cpu().numpy()
 
     features = np.array([i[0].numpy() for i in testData])
     reconstructed_features = generator(torch.from_numpy(features).float()).detach().numpy()
-    print('aaa:', features.shape)
-    print('bbb:', reconstructed_features.shape)
     labels = np.array([i[1].numpy() for i in testData])
-    f_names = ['Time', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28', 'Amount']
+    f_names = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28']
 
     #explain Generator(AutoEncoder)
     AE_explainer = lime.lime_tabular.LimeTabularExplainer(features,
@@ -279,7 +278,7 @@ elif args.mode == 'explainer':
                                                 mode='classification',
                                                 feature_names=f_names,
                                                 verbose=True,
-                                                class_names=['p_fraud'])
+                                                class_names=['Fraud', 'Genuine'])
     D_exp = D_explainer.explain_instance(features[-1],
                                     D_prediction,
                                     num_features=10)
@@ -291,7 +290,7 @@ elif args.mode == 'explainer':
                                                 mode='classification',
                                                 feature_names=f_names,
                                                 verbose=True,
-                                                class_names=['p_fraud'])
+                                                class_names=['Fraud', 'Genuine'])
     AED_exp = AED_explainer.explain_instance(features[-1],
                                     AED_prediction,
                                     num_features=10)

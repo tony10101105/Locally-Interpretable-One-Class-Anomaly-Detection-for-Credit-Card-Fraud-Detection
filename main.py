@@ -18,10 +18,10 @@ import lime.lime_tabular
 parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", type = int, default = 4096)
 parser.add_argument("--lr", type = float, default = 2e-4)
-parser.add_argument("--n_epochs", type = int, default = 1)
+parser.add_argument("--n_epochs", type = int, default = 2)
 parser.add_argument("--normalization", type = str, default = 'z_score')
-parser.add_argument("--reconstructionLoss", type = str, default = 'SmoothL1')
-parser.add_argument("--mode", type = str, default = 'test')
+parser.add_argument("--reconstructionLoss", type = str, default = 'MSE')
+parser.add_argument("--mode", type = str, default = 'explainer')
 parser.add_argument("--GPU", type = bool, default = False)
 parser.add_argument("--resume", type = bool, default = False)
 args = parser.parse_args()
@@ -40,7 +40,7 @@ data_point_num = len(non_fraud_Data)
 test_data_point_num = 490
 train_data_point_num = data_point_num - test_data_point_num
 trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
-#trainData, _ = random_split(trainData, [100000, len(trainData) - 100000])
+#trainData, _ = random_split(trainData, [700, len(trainData) - 700])
 trainData = DataSet.DataSet([trainData], args.normalization)
 fraud_Data, _ = random_split(fraud_Data, [490, 2])
 testData = DataSet.DataSet([nonFraudTestData, fraud_Data], args.normalization) #following the setting of 13.pdf
@@ -174,11 +174,11 @@ elif args.mode == 'test':
     generator.eval()
     discriminator.eval()
     print('start running on test mode...')
-    for i in range(1, 20):
+    for i in range(1, 100):
         TP, FP, TN, FN = 0, 0, 0, 0
         all_pred = []
         all_labels = []
-        args.threshold = i / 20
+        args.threshold = i / 100
         print('threshold:', args.threshold)
         for i, (features, labels) in enumerate(testDataLoader):
 
@@ -190,11 +190,11 @@ elif args.mode == 'test':
             reconstruction = generator(features)
             p_fraud = discriminator(reconstruction)
             p_fraud = sig(p_fraud)
-            print('re:', torch.sum(features - reconstruction, 1))
+            #print('re:', torch.sum(features - reconstruction, 1))
             p_fraud = p_fraud.squeeze()
             #p_fraud = 1 - p_fraud
-            print('p_fraud:', p_fraud)
-            print('labels:', labels)
+            #print('p_fraud:', p_fraud)
+            #print('labels:', labels)
 
             all_pred.extend(p_fraud.tolist())
             all_labels.extend(labels.tolist())
@@ -233,7 +233,7 @@ elif args.mode == 'explainer':
         model.eval()
         features = torch.from_numpy(features).float()
         reconstruction = model(features)
-        Re_loss_pred = (torch.sum(features - reconstruction, 1)**2) / 30
+        Re_loss_pred = (torch.sum(features - reconstruction, 1)**2) / 28
         return Re_loss_pred.detach().cpu().numpy()
 
     def D_prediction(features, model=discriminator):
@@ -260,18 +260,18 @@ elif args.mode == 'explainer':
     reconstructed_features = generator(torch.from_numpy(features).float()).detach().numpy()
     labels = np.array([i[1].numpy() for i in testData])
     f_names = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21', 'V22', 'V23', 'V24', 'V25', 'V26', 'V27', 'V28']
-
+    print('features[-5]:', features[-5])
     #explain Generator(AutoEncoder)
     AE_explainer = lime.lime_tabular.LimeTabularExplainer(features,
                                                 mode='regression',
                                                 feature_names=f_names,
                                                 verbose=True,
                                                 class_names=['reconstruction error'])
-    AE_exp = AE_explainer.explain_instance(features[-1],
+    AE_exp = AE_explainer.explain_instance(features[-5],
                                     AE_prediction,
-                                    num_features=10)
+                                    num_features=6)
     AE_exp.save_to_file('AE_lime.html')
-    print('AE explaination done')
+    print('AE explaination done')
 
     #explain Discriminator
     D_explainer = lime.lime_tabular.LimeTabularExplainer(reconstructed_features,
@@ -279,9 +279,9 @@ elif args.mode == 'explainer':
                                                 feature_names=f_names,
                                                 verbose=True,
                                                 class_names=['Fraud', 'Genuine'])
-    D_exp = D_explainer.explain_instance(features[-1],
+    D_exp = D_explainer.explain_instance(reconstructed_features[-5],
                                     D_prediction,
-                                    num_features=10)
+                                    num_features=6)
     D_exp.save_to_file('D_lime.html')
     print('Discriminator explaination done')
 
@@ -291,9 +291,9 @@ elif args.mode == 'explainer':
                                                 feature_names=f_names,
                                                 verbose=True,
                                                 class_names=['Fraud', 'Genuine'])
-    AED_exp = AED_explainer.explain_instance(features[-1],
+    AED_exp = AED_explainer.explain_instance(features[-5],
                                     AED_prediction,
-                                    num_features=10)
+                                    num_features=6)
     AED_exp.save_to_file('AED_lime.html')
     print('whole network explaination done')
         

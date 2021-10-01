@@ -1,20 +1,13 @@
 import os
 import torch
-from torch.utils.data.dataset import Dataset
-import torchvision
 import torch.nn as nn
-from torchvision import transforms
-from torch.autograd import Variable
-from torch.utils.data import DataLoader, random_split, ConcatDataset
+from torch.utils.data import DataLoader
 from sklearn import metrics
-import matplotlib.pyplot as plt
 import argparse
 import models
-import DataSet
 import utils
 import random
-import csv
-
+import split
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", type = int, default = 4096)
@@ -34,33 +27,7 @@ random.seed(0)
 #load datasets
 print('loading the {} dataset...'.format(args.mode+'ing'))
 
-non_fraud_Data = DataSet.SplitedDataSet(mode = 'non-fraud')
-fraud_Data = DataSet.SplitedDataSet(mode = 'fraud')
-
-data_point_num = len(non_fraud_Data)
-test_data_point_num = 490
-train_data_point_num = data_point_num - test_data_point_num
-trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
-
-trainData = DataSet.DataSet([trainData], args.normalization)
-fraud_Data, _ = random_split(fraud_Data, [490, 2])
-testData = DataSet.DataSet([nonFraudTestData, fraud_Data], args.normalization) #following the setting of 13.pdf
-
-""" 
-with open("./datasets/trainData.csv", "w") as f:
-    writer = csv.writer(f)
-
-    for i in range(len(trainData)):
-        writer.writerow(trainData[i][0]+[trainData[i][1]])
-
-with open("./datasets/testData.csv", "w") as f:
-    writer = csv.writer(f)
-
-    for i in range(len(testData)):
-        writer.writerow(testData[i][0]+[testData[i][1]])
-
-raise Exception  
-"""
+trainData, testData = split.getDatasets()
 
 trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = True, drop_last=True)
 testDataLoader = DataLoader(dataset = testData, batch_size = args.batch_size, shuffle = True)
@@ -185,7 +152,7 @@ if args.mode == 'train':
 
             if (i + 1) % 10 == 0:
                 print("iteration: {} / {}, Epoch: {} / {}, g_loss_Re: {:.5f}, g_loss_BCE: {:.4f}, d_loss: {:.4f}".format(
-                    str((i+1)*args.batch_size), str(train_data_point_num), epoch+1, args.n_epochs, g_loss_Re.data / (500*args.batch_size), g_loss_BCE.data / (500*args.batch_size), d_loss_sum.data / (500*args.batch_size)))
+                    str((i+1)*args.batch_size), len(trainData), epoch+1, args.n_epochs, g_loss_Re.data / (500*args.batch_size), g_loss_BCE.data / (500*args.batch_size), d_loss_sum.data / (500*args.batch_size)))
                 g_loss_Re = 0
                 g_loss_BCE = 0
                 d_loss_sum = 0

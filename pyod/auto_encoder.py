@@ -3,9 +3,7 @@ import torch.nn as nn
 from pyod.models.auto_encoder_torch import AutoEncoder
 import random
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import  utils
+import utils
 import argparse
 
 parser = argparse.ArgumentParser()

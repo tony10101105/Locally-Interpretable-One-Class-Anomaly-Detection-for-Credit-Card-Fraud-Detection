@@ -1,9 +1,7 @@
 from pyod.models.so_gaal import SO_GAAL  
 import random
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import  utils
+import utils
 import tensorflow as tf
 
 tf.random.set_seed(4)

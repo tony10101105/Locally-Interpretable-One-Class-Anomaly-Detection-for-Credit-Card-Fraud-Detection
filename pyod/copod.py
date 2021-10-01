@@ -1,9 +1,7 @@
 from pyod.models.copod import COPOD
 import random
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import  utils
+import utils
 
 random.seed(0)
 

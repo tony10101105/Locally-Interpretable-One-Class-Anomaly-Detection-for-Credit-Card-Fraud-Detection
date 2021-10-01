@@ -1,6 +1,4 @@
-import os
 import torch
-import torchvision
 import matplotlib.pyplot as plt
 
 def plot_and_save_fig(fpr, tpr, roc_auc):

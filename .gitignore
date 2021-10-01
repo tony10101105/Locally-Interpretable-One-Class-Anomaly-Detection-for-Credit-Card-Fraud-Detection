@@ -1,5 +1,4 @@
 *.csv
-/datasets
 /checkpoints/*.pth
 /__pycache__
 /fig

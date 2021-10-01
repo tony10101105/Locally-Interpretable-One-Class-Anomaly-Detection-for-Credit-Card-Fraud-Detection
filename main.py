@@ -222,31 +222,3 @@ elif args.mode == 'test':
         F1_score = utils.get_F1_score(TP = float(TP), FP = float(FP), FN = float(FN), TN = float(TN))
         MCC = utils.get_MCC(TP = float(TP), FP = float(FP), FN = float(FN), TN = float(TN))
         print("accuracy: {}, recall: {}, precision: {}, F1_score: {}, MCC: {}".format(accuracy, recall, precision, F1_score, MCC))
-        
-        #raise Exception('stop')
-
-    
-        
-    
-        
-        
-
-
-
-
-
-        
-  
-
-
-    
-        
-    
-        
-        
-
-
-
-
-
-        

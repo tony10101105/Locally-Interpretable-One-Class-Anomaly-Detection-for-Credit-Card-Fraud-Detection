@@ -1,6 +1,6 @@
 *.csv
 /datasets
-/checkpoints
+/checkpoints/*.pth
 /__pycache__
 /fig
 /pyod/__pycache__

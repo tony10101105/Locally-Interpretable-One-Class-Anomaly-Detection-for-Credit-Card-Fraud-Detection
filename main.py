@@ -16,12 +16,12 @@ import lime.lime_tabular
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 4096)
+parser.add_argument("--batch_size", type = int, default = 8)
 parser.add_argument("--lr", type = float, default = 2e-4)
-parser.add_argument("--n_epochs", type = int, default = 2)
+parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'z_score')
 parser.add_argument("--reconstructionLoss", type = str, default = 'MSE')
-parser.add_argument("--mode", type = str, default = 'explainer')
+parser.add_argument("--mode", type = str, default = 'train')
 parser.add_argument("--GPU", type = bool, default = False)
 parser.add_argument("--resume", type = bool, default = False)
 args = parser.parse_args()
@@ -46,7 +46,7 @@ fraud_Data, _ = random_split(fraud_Data, [490, 2])
 testData = DataSet.DataSet([nonFraudTestData, fraud_Data], args.normalization) #following the setting of 13.pdf
 
 
-trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = True, drop_last=True)
+trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = False, drop_last=True)
 testDataLoader = DataLoader(dataset = testData, batch_size = args.batch_size, shuffle = True)
 print('datasets loading finished!')
 
@@ -109,6 +109,7 @@ if args.mode == 'train':
         g_loss_BCE =0
         d_loss_sum = 0
         for i, (features, labels) in enumerate(trainDataLoader):
+            raise Exception('stop')
             labels = labels.unsqueeze(1)
             if torch.sum(labels) != 0:
                 raise Exception('stop')
@@ -163,8 +164,8 @@ if args.mode == 'train':
                 g_loss_Re = 0
                 g_loss_BCE = 0
                 d_loss_sum = 0
-                print('real_pred:', real_pred)
-                print('fake_pred:', fake_pred)
+                #print('real_pred:', real_pred)
+                #print('fake_pred:', fake_pred)
 
         torch.save({'epoch': epoch+1, 'model_state_dict': generator.state_dict(), 'optimizer_state_dict': g_optimizer.state_dict()}, './checkpoints/g_checkpoint.pth')
         torch.save({'epoch': epoch+1, 'model_state_dict': discriminator.state_dict(), 'optimizer_state_dict': d_optimizer.state_dict()}, './checkpoints/d_checkpoint.pth')

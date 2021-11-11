@@ -95,6 +95,7 @@ class DataSet(Dataset):
         self.labels = torch.FloatTensor(self.labels)
 
     def __getitem__(self, index):
+        print('index:', index)
         return self.features[index], self.labels[index]
 
     def __len__(self):

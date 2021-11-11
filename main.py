@@ -1,14 +1,11 @@
 import os
 import numpy as np
 import torch
-from torch.utils.data.dataset import Dataset
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split, ConcatDataset
+from torch.utils.data import DataLoader
 from sklearn import metrics
-import matplotlib.pyplot as plt
 import argparse
 import models
-import DataSet
 import utils
 import random
 import lime
@@ -16,7 +13,7 @@ import lime.lime_tabular
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type = int, default = 8)
+parser.add_argument("--batch_size", type = int, default = 4096)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--n_epochs", type = int, default = 1)
 parser.add_argument("--normalization", type = str, default = 'z_score')
@@ -33,18 +30,7 @@ random.seed(0)
 #load datasets
 print('loading the dataset...')
 
-non_fraud_Data = DataSet.SplitedDataSet(mode = 'non-fraud')
-fraud_Data = DataSet.SplitedDataSet(mode = 'fraud')
-
-data_point_num = len(non_fraud_Data)
-test_data_point_num = 490
-train_data_point_num = data_point_num - test_data_point_num
-trainData, nonFraudTestData = random_split(non_fraud_Data, [train_data_point_num, test_data_point_num])
-#trainData, _ = random_split(trainData, [700, len(trainData) - 700])
-trainData = DataSet.DataSet([trainData], args.normalization)
-fraud_Data, _ = random_split(fraud_Data, [490, 2])
-testData = DataSet.DataSet([nonFraudTestData, fraud_Data], args.normalization) #following the setting of 13.pdf
-
+trainData, testData = split.getDatasets()
 
 trainDataLoader = DataLoader(dataset = trainData, batch_size = args.batch_size, shuffle = False, drop_last=True)
 testDataLoader = DataLoader(dataset = testData, batch_size = args.batch_size, shuffle = True)
@@ -95,6 +81,8 @@ else:
 
 #if we use BCEWithLogitsLoss, sigmoid should be manually applied in testing stage
 BCELoss = nn.BCEWithLogitsLoss()
+sig = nn.Sigmoid()
+
 sig = nn.Sigmoid()
 
 #start training / testing
@@ -194,8 +182,8 @@ elif args.mode == 'test':
             #print('re:', torch.sum(features - reconstruction, 1))
             p_fraud = p_fraud.squeeze()
             #p_fraud = 1 - p_fraud
-            #print('p_fraud:', p_fraud)
-            #print('labels:', labels)
+            print('p_fraud:', p_fraud)
+            print('labels:', labels)
 
             all_pred.extend(p_fraud.tolist())
             all_labels.extend(labels.tolist())

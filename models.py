@@ -1,9 +1,5 @@
-import os
 import torch
-import torchvision
 import torch.nn as nn
-from torch.autograd import Variable
-from torchvision import datasets, transforms
 
 torch.manual_seed(0)#for reproducibility
 

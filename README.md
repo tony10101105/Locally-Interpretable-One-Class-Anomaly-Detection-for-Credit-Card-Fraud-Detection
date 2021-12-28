@@ -1,6 +1,5 @@
 # Credit-Card-Fraud-Detection-with-Anomaly-Detection
-> This is official code implementation of TAAI 2021 Paper: Locally Interpretable One Class Anomaly Detection for Credit Card Fraud Detection.
-
+> This is official code implementation of TAAI 2021 Best Paper Award paper: Locally Interpretable One Class Anomaly Detection for Credit Card Fraud Detection.
 # Datasets
 * https://www.kaggle.com/mlg-ulb/creditcardfraud
 

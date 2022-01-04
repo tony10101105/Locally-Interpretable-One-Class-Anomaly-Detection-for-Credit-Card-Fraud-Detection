@@ -10,6 +10,7 @@ Place [CCFD dataset](https://www.kaggle.com/mlg-ulb/creditcardfraud) into /datas
 ```bash
 python3 main.py --mode train
 python3 main.py --mode test
+python3 main.py --mode explainer
 ```
 
 # Run Pyod Experiments
